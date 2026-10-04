@@ -63,6 +63,7 @@ Cybersecurity student (Ethical Hacking & Cybersecurity, 4.0 GPA) with hands-on p
 - Conducted hardware wiretap analysis to recover and analyze intercepted signal data
 - Competed in Hack The Box's Cyber Apocalypse CTF 2026, solving challenges under competitive time pressure
 - Competed with team `v1olet` in 0xV01D CTF and BrunnerCTF 2026, placing 2nd in both
+- Took 1st place in the Human Bracket of PwnSec CTF 2026 with team `v1olet`, and ranked #14 in Sunshine CTF 2026 and #97 in HTB Holmes CTF 2026
 
 ### Steganography Tool (Python)
 

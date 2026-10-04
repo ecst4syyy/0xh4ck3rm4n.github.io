@@ -28,8 +28,26 @@ const SITE = {
     {
       event: "Netanix CTF",
       team: "solo",
-      result: "Rank #5 · 46,959 pts",
+      result: "Rank #2 · 57,619 pts",
       live: true,
+    },
+    {
+      event: "PwnSec CTF 2026",
+      team: "v1olet",
+      result: "Rank #1 · Human Bracket",
+      live: false,
+    },
+    {
+      event: "HTB Holmes CTF 2026",
+      team: "v1olet",
+      result: "Rank #97",
+      live: false,
+    },
+    {
+      event: "Sunshine CTF 2026",
+      team: "v1olet",
+      result: "Rank #14",
+      live: false,
     },
     {
       event: "BrunnerCTF 2026",
