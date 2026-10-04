@@ -1,8 +1,13 @@
 # whois-proxy
 
-A tiny Cloudflare Worker that proxies WHOIS lookups to
-[WhoisJSON](https://whoisjson.com/documentation), keeping the API key
-server-side instead of shipping it in the static site's client-side JS.
+A tiny Cloudflare Worker with two jobs:
+
+1. **WHOIS** (`GET /?domain=…`): proxies lookups to
+   [WhoisJSON](https://whoisjson.com/documentation), keeping the API key
+   server-side instead of shipping it in the static site's client-side JS.
+2. **Contact** (`POST /contact`): receives the desktop's Hire Me form and
+   posts it to a private Discord channel via webhook, so messages arrive even
+   when the visitor has no mail app set up.
 
 The site's WHOIS app calls `GET <this worker's URL>/?domain=example.com`
 with no key attached; the worker attaches the key (from a Cloudflare
@@ -16,6 +21,9 @@ npx wrangler login          # opens a browser to log into your (free) Cloudflare
 npx wrangler secret put WHOIS_API_KEY
 # paste your WhoisJSON API key when prompted — it is stored encrypted on
 # Cloudflare and is never written to any file in this repo
+npx wrangler secret put DISCORD_WEBHOOK_URL
+# paste a webhook URL from Discord: Server Settings → Integrations →
+# Webhooks → New Webhook (pick a private channel) → Copy Webhook URL
 npx wrangler deploy
 ```
 
@@ -36,7 +44,16 @@ const WHOIS_PROXY_URL = "https://whois-proxy.<your-subdomain>.workers.dev"
 ```
 
 (There's a `// TODO: set after `wrangler deploy`` marker on that line —
-search for `WHOIS_PROXY_URL`.)
+search for `WHOIS_PROXY_URL`.) The Hire Me form posts to
+`WHOIS_PROXY_URL + "/contact"` automatically. Until the worker is deployed
+with `DISCORD_WEBHOOK_URL` set, the form falls back to opening the visitor's
+mail app, so nothing breaks in the meantime.
+
+The contact route validates length and email format, ignores bots that fill
+the hidden honeypot field, and strips Discord mentions/markdown from user
+input. If you start getting spam, add a
+[rate limiting rule](https://developers.cloudflare.com/waf/rate-limiting-rules/)
+for `/contact` in the Cloudflare dashboard.
 
 ## Local testing
 

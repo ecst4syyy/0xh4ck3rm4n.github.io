@@ -5,7 +5,7 @@ image: /static/brunner-logo.png
 event: BrunnerCTF
 tags:
   - writeup
-  - misics
+  - misc
   - forensics
 difficulty: easy
 date: 2026-08-22

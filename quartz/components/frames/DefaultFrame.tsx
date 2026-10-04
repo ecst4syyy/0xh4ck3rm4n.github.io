@@ -1,3 +1,4 @@
+import { createHash } from "crypto"
 import { JSX } from "preact"
 import { PageFrame, PageFrameProps } from "./types"
 import { QuartzPluginData } from "../../plugins/vfile"
@@ -67,7 +68,7 @@ const SITE = {
     "Machine Learning",
   ],
   bootLines: [
-    "SIGNAL 98 (c) esct4sy systems",
+    "SIGNAL 98 (c) ecst4sy systems",
     "Verifying DMI pool data........ OK",
     "Loading profile: ESCT4SY.SYS",
     "Mounting ~/writeups as D:",
@@ -97,31 +98,281 @@ interface MusicTrack {
   title: string
   artist: string
   src: string
+  /** Shown before the track loads, so the player needn't probe every mp3 on page load */
+  duration: string
 }
 
 const MUSIC_TRACKS: MusicTrack[] = [
-  { title: "All I Want is You", artist: "Miguel", src: "/static/music/01-all-i-want-is-you.mp3" },
+  {
+    title: "All I Want is You",
+    artist: "Miguel",
+    src: "/static/music/01-all-i-want-is-you.mp3",
+    duration: "4:27",
+  },
   {
     title: "Weird Fishes / Arpeggi",
     artist: "Radiohead",
     src: "/static/music/02-weird-fishes-arpeggi.mp3",
+    duration: "5:17",
   },
   {
     title: "The Less I Know The Better",
     artist: "Tame Impala",
     src: "/static/music/03-the-less-i-know-the-better.mp3",
+    duration: "3:37",
   },
   {
     title: "Softcore",
     artist: "The Neighbourhood",
     src: "/static/music/04-softcore.mp3",
+    duration: "3:30",
   },
   {
     title: "Sex, Drugs, Etc.",
     artist: "Beach Weather",
     src: "/static/music/05-sex-drugs-etc.mp3",
+    duration: "3:28",
   },
 ]
+
+/**
+ * Hidden-flag hunt. Only SHA-256 hashes of the flags ship to Flags.exe; each
+ * flag's plaintext lives solely in its hiding spot (see `hiddenIn`). Flags
+ * that live inside the apps script are reversed + base64'd so a plain grep of
+ * the bundle doesn't give them away. Reading the JS is still a fair solve.
+ */
+interface HiddenFlag {
+  id: string
+  title: string
+  hint: string
+  flag: string
+  /** Where it's planted, for your own reference */
+  hiddenIn: string
+}
+
+const FLAGS: HiddenFlag[] = [
+  {
+    id: "source",
+    title: "View Source",
+    hint: "Real hackers read the page source of this desktop.",
+    flag: "ecst4sy{v13w_s0urc3_1s_4_sup3rp0w3r}",
+    hiddenIn: "HTML comment in the desktop markup",
+  },
+  {
+    id: "console",
+    title: "Dev Notes",
+    hint: "Developers leave notes for developers. Open DevTools.",
+    flag: "ecst4sy{c0ns0l3_c0wb0y}",
+    hiddenIn: "console.log, base64-encoded",
+  },
+  {
+    id: "cookie",
+    title: "Cookie Jar",
+    hint: "Something sweet is stored in your browser. It's been rotated by 13.",
+    flag: "ecst4sy{c00k13_m0nst3r}",
+    hiddenIn: "secret_recipe cookie, ROT13",
+  },
+  {
+    id: "sticky",
+    title: "Invisible Ink",
+    hint: "Not everything on today's to-do list is visible. Try selecting it.",
+    flag: "ecst4sy{1nv1s1bl3_1nk}",
+    hiddenIn: "yellow-on-yellow line on the sticky note",
+  },
+  {
+    id: "recycle",
+    title: "Trash Diving",
+    hint: "Someone deleted their passwords file. Stored 'securely', in hex.",
+    flag: "ecst4sy{tr4sh_d1v1ng_pr0}",
+    hiddenIn: "Recycle Bin > passwords.txt, hex-encoded",
+  },
+  {
+    id: "terminal",
+    title: "Dotfiles",
+    hint: "The Terminal hides files that start with a dot.",
+    flag: "ecst4sy{l5_-l4_r3v34ls_4ll}",
+    hiddenIn: "Terminal: cat ~/.secret",
+  },
+  {
+    id: "mines",
+    title: "Minesweeper",
+    hint: "Clear the minefield. Every last safe square.",
+    flag: "ecst4sy{sw33p_th3_m1n3s}",
+    hiddenIn: "Minesweeper win message",
+  },
+  {
+    id: "konami",
+    title: "Cheat Code",
+    hint: "↑ ↑ ↓ ↓ ← → ← → B A",
+    flag: "ecst4sy{k0n4m1_cr4sh3d_th3_0s}",
+    hiddenIn: "blue screen after the Konami code",
+  },
+]
+
+function flagById(id: string): string {
+  return FLAGS.find((f) => f.id === id)?.flag ?? ""
+}
+const sha256 = (s: string) => createHash("sha256").update(s).digest("hex")
+/** Inverse of decode() in webos-apps.inline.ts */
+const encodePayload = (s: string) => Buffer.from(s.split("").reverse().join("")).toString("base64")
+
+const RECYCLE_FILES = [
+  {
+    name: "passwords.txt",
+    icon: "📄",
+    content: [
+      "# note to self: NEVER store passwords in plaintext",
+      "# so I stored them in hex. totally secure.",
+      "",
+      "wifi:      hunter2",
+      "htb vpn:   ********",
+      "flag:      " + Buffer.from(flagById("recycle")).toString("hex"),
+    ].join("\n"),
+  },
+  {
+    name: "exploit_FINAL_v3.py",
+    icon: "🐍",
+    content: [
+      "#!/usr/bin/env python3",
+      "# v1: segfault",
+      "# v2: segfault, but faster",
+      "# v3: works locally. remote? segfault.",
+      "from pwn import *",
+      "",
+      "payload = b'A' * 64 + p64(0xdeadbeef)  # TODO: find the real offset",
+      "io = remote('challenge.ctf', 1337)",
+      "io.sendline(payload)",
+      "io.interactive()  # pray",
+    ].join("\n"),
+  },
+  {
+    name: "portfolio_v1.html",
+    icon: "🌐",
+    content: [
+      "<html>",
+      "<body bgcolor='black' text='lime'>",
+      "<marquee>WELCOME 2 MY HOMEPAGE!!!</marquee>",
+      "<img src='under_construction.gif'>",
+      "<!-- TODO: make it look like windows 98 -->",
+      "</body>",
+      "</html>",
+    ].join("\n"),
+  },
+  {
+    name: "todo_2024.txt",
+    icon: "📄",
+    content: [
+      "- learn assembly",
+      "- learn assembly (for real this time)",
+      "- stop opening 40 tabs of ghidra",
+      "- write writeups instead of just solving stuff",
+      "- touch grass",
+    ].join("\n"),
+  },
+]
+
+function wallpapers(basePath: string) {
+  return [
+    {
+      id: "cats",
+      name: "Lavender Cats",
+      css: `url("${basePath}/static/wallpaper.png") center / cover no-repeat, #d9c4f5`,
+    },
+    { id: "teal", name: "Windows Teal", css: "#008080" },
+    {
+      id: "clouds",
+      name: "Clouds",
+      css:
+        "radial-gradient(ellipse 22% 9% at 18% 22%, #fff 60%, transparent 62%)," +
+        "radial-gradient(ellipse 16% 7% at 70% 30%, #fff 60%, transparent 62%)," +
+        "radial-gradient(ellipse 26% 10% at 48% 70%, #fff 60%, transparent 62%)," +
+        "linear-gradient(180deg, #3d7fd6, #a9cdf5)",
+    },
+    {
+      id: "checker",
+      name: "Lavender Checker",
+      css: "repeating-conic-gradient(#e6d6fb 0 25%, #fbf7ff 0 50%) 0 0 / 56px 56px",
+    },
+    {
+      id: "night",
+      name: "Night Grid",
+      css:
+        "linear-gradient(rgba(143, 95, 232, 0.2) 1px, transparent 1px) 0 0 / 32px 32px," +
+        "linear-gradient(90deg, rgba(143, 95, 232, 0.2) 1px, transparent 1px) 0 0 / 32px 32px," +
+        "radial-gradient(circle at 50% 40%, #2a1650, #07060c 70%)",
+    },
+  ]
+}
+
+interface DesktopApp {
+  id: string
+  icon: string
+  label: string
+}
+
+/** Apps with a desktop icon, in icon order. Also drives the Start menu and taskbar. */
+const APPS: DesktopApp[] = [
+  { id: "about", icon: "📝", label: "About Me.txt" },
+  { id: "ctfwriteups", icon: "🗂️", label: "CTF Writeups" },
+  { id: "hireme", icon: "📇", label: "Hire Me" },
+  { id: "resume", icon: "📄", label: "Resume / CV" },
+  { id: "terminal", icon: "💻", label: "Terminal" },
+  { id: "flags", icon: "🚩", label: "Flags.exe" },
+  { id: "minesweeper", icon: "💣", label: "Minesweeper" },
+  { id: "whois", icon: "🔎", label: "WHOIS" },
+  { id: "paint", icon: "🎨", label: "Paint" },
+  { id: "music", icon: "🎵", label: "Music Player" },
+  { id: "wikipedia", icon: "📖", label: "Wikipedia" },
+  { id: "recycle", icon: "🗑️", label: "Recycle Bin" },
+]
+
+/** Windows without a desktop icon that still get a taskbar button. */
+const OTHER_WINDOWS: DesktopApp[] = [
+  { id: "todo", icon: "🗒️", label: "Things to do today" },
+  { id: "display", icon: "🖥️", label: "Display Properties" },
+  { id: "viewer", icon: "📝", label: "Notepad" },
+]
+
+/** Site content the desktop apps script reads (terminal filesystem, flags, wallpapers). */
+function WebOSData({ posts, basePath }: { posts: Post[]; basePath: string }) {
+  const data = {
+    alias: SITE.alias,
+    name: "Gaurav Poudel",
+    email: SITE.email,
+    tagline: "cybersecurity student, CTF player (team v1olet), and builder",
+    currently: SITE.currentlyLine,
+    quote: SITE.quote,
+    socials: SITE.socials.map((s) => ({ name: s.name, url: s.url })),
+    ctfLog: SITE.ctfLog,
+    techniques: SITE.techniques,
+    basePath,
+    posts: posts.map((p) => ({
+      slug: p.slug,
+      title: p.title,
+      category: p.category,
+      difficulty: p.difficulty,
+      event: p.event,
+      date: p.date ? p.date.toISOString().slice(0, 10) : undefined,
+      description: p.description,
+      tags: p.tags.filter((t) => t !== "writeup"),
+    })),
+    flags: FLAGS.map((f) => ({ id: f.id, title: f.title, hint: f.hint, hash: sha256(f.flag) })),
+    payloads: {
+      console: encodePayload(flagById("console")),
+      cookie: encodePayload(flagById("cookie")),
+      terminal: encodePayload(flagById("terminal")),
+      mines: encodePayload(flagById("mines")),
+      konami: encodePayload(flagById("konami")),
+    },
+    recycle: RECYCLE_FILES,
+    wallpapers: wallpapers(basePath),
+  }
+  // Escape "<" so content can never close the script tag early
+  const json = JSON.stringify(data).replace(/</g, "\\u003c")
+  return (
+    <script type="application/json" id="webos-data" dangerouslySetInnerHTML={{ __html: json }} />
+  )
+}
 
 function buildAboutText(): string {
   const ctfLines = SITE.ctfLog
@@ -335,7 +586,7 @@ const CategoryIcons: Record<string, JSX.Element> = {
       <path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2.2 2.2M16.8 16.8 19 19M5 19l2.2-2.2M16.8 7.2 19 5" />
     </svg>
   ),
-  misics: (
+  misc: (
     <svg
       viewBox="0 0 24 24"
       fill="none"
@@ -375,13 +626,13 @@ function SectionHeader({
   label,
   hint,
 }: {
-  n: string
+  n?: string
   label: string
   hint: JSX.Element | string
 }) {
   return (
     <div class="section-header">
-      <span class="section-header__n">{n}</span>
+      {n ? <span class="section-header__n">{n}</span> : null}
       <span class="section-header__label">{label}</span>
       <span class="section-header__rule" aria-hidden="true"></span>
       <span class="section-header__hint">{hint}</span>
@@ -397,7 +648,9 @@ function ArchiveGrid({
   basePath: string
 }) {
   const posts = buildPosts(componentData.allFiles)
-  const allTags = Array.from(new Set(posts.flatMap((p) => p.tags))).sort()
+  // Every post here is tagged "writeup", so that tag can't narrow anything down
+  const shownTags = (tags: string[]) => tags.filter((t) => t !== "writeup")
+  const allTags = Array.from(new Set(posts.flatMap((p) => shownTags(p.tags)))).sort()
   const year = new Date().getFullYear()
 
   return (
@@ -408,7 +661,6 @@ function ArchiveGrid({
           <span class="post-grid-prompt__cursor" aria-hidden="true"></span>
         </p>
         <SectionHeader
-          n="03"
           label="CTF Writeups"
           hint={
             <>
@@ -513,9 +765,9 @@ function ArchiveGrid({
                   {post.description ? (
                     <p class="post-card-description">{post.description}</p>
                   ) : null}
-                  {post.tags.length > 0 ? (
+                  {shownTags(post.tags).length > 0 ? (
                     <ul class="post-card-tags">
-                      {post.tags.map((t) => (
+                      {shownTags(post.tags).map((t) => (
                         <li>#{t}</li>
                       ))}
                     </ul>
@@ -536,27 +788,30 @@ function ArchiveGrid({
 
       <div class="post-grid-status">
         <span>{posts.length} objects</span>
-        <span>(c) esct4sy {year}</span>
+        <span>(c) ecst4sy {year}</span>
       </div>
     </section>
   )
 }
 
 /**
- * Every window's titlebar: icon + title + exactly two controls — collapse and close.
+ * Every window's titlebar: icon + title + collapse, maximize and close controls.
  * closeHref makes close a real link (used on content pages); omit it for desktop apps,
- * which close via the window manager's data-win-close handler instead.
+ * which close via the window manager's data-win-close handler instead. Content pages
+ * are already full-size, so they get no maximize control.
  */
 function WinTitlebar({
   icon,
   title,
   closeHref,
   collapsible = true,
+  maximizable = !closeHref,
 }: {
   icon?: string
   title: string
   closeHref?: string
   collapsible?: boolean
+  maximizable?: boolean
 }) {
   return (
     <div class="win98-titlebar" data-drag-handle="true">
@@ -565,11 +820,18 @@ function WinTitlebar({
           {icon}
         </span>
       ) : null}
-      <span class="win98-titlebar__title">{title}</span>
+      <span class="win98-titlebar__title" data-win-title="true">
+        {title}
+      </span>
       <div class="win98-titlebar__controls">
         {collapsible ? (
           <button type="button" class="win98-btn" data-win-collapse="true" aria-label="Collapse">
             ▾
+          </button>
+        ) : null}
+        {maximizable ? (
+          <button type="button" class="win98-btn" data-win-maximize="true" aria-label="Maximize">
+            □
           </button>
         ) : null}
         {closeHref ? (
@@ -681,6 +943,15 @@ const PortalScript = () => (
       });
       if (clearSearch) on(clearSearch, "click", function () {
         searchInput.value = ""; q = ""; clearSearch.hidden = true; apply(); searchInput.focus();
+      });
+      // "/" focuses search whenever the writeups grid is visible, as the <kbd> hint promises
+      on(document, "keydown", function (e) {
+        if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+        var t = e.target;
+        if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+        if (!o.offsetParent) return;
+        e.preventDefault();
+        searchInput.focus();
       });
     }
     tagBtns.forEach(function (b) {
@@ -801,6 +1072,52 @@ const PortalScript = () => (
     var winRegistry = {};
 
     function clamp(n, min, max) { return Math.min(Math.max(n, min), max); }
+    function isMobile() { return window.matchMedia("(max-width: 640px)").matches; }
+    function taskbarHeight() {
+      var tb = document.querySelector(".win98-taskbar");
+      return tb ? tb.offsetHeight : 34;
+    }
+
+    // Window positions are authored for a ~1440x900 screen. Pull any window
+    // that would spill past the viewport (or under the taskbar) back on-screen,
+    // shrinking it if the viewport is smaller than the window itself.
+    function fitWindow(el) {
+      if (isMobile() || el.classList.contains("is-maximized")) return;
+      var dRect = desktop.getBoundingClientRect();
+      var maxW = dRect.width - 16, maxH = dRect.height - taskbarHeight() - 16;
+      var w = Math.min(el.offsetWidth, maxW), h = Math.min(el.offsetHeight, maxH);
+      var r = el.getBoundingClientRect();
+      var left = clamp(r.left - dRect.left, 8, Math.max(8, dRect.width - w - 8));
+      var top = clamp(r.top - dRect.top, 8, Math.max(8, maxH + 8 - h));
+      if (w !== el.offsetWidth) el.style.width = w + "px";
+      if (h !== el.offsetHeight && !el.classList.contains("is-collapsed")) el.style.height = h + "px";
+      el.style.right = "auto";
+      el.style.left = left + "px";
+      el.style.top = top + "px";
+    }
+    function fitAllWindows() {
+      Object.keys(winRegistry).forEach(function (id) {
+        if (!winRegistry[id].el.hidden) fitWindow(winRegistry[id].el);
+      });
+    }
+
+    function toggleMaximize(el) {
+      var maxing = !el.classList.contains("is-maximized");
+      if (maxing) {
+        el.dataset.prevGeom = JSON.stringify({ left: el.style.left, top: el.style.top, width: el.style.width, height: el.style.height });
+        el.classList.remove("is-collapsed");
+      } else if (el.dataset.prevGeom) {
+        var g = JSON.parse(el.dataset.prevGeom);
+        el.style.left = g.left; el.style.top = g.top; el.style.width = g.width; el.style.height = g.height;
+      }
+      el.classList.toggle("is-maximized", maxing);
+      var btn = el.querySelector("[data-win-maximize]");
+      if (btn) {
+        btn.textContent = maxing ? "❐" : "□";
+        btn.setAttribute("aria-label", maxing ? "Restore" : "Maximize");
+      }
+      saveState();
+    }
 
     function updateTaskbarPressed() {
       Object.keys(winRegistry).forEach(function (id) {
@@ -827,7 +1144,9 @@ const PortalScript = () => (
       rec.el.hidden = false;
       rec.el.classList.remove("is-collapsed");
       if (rec.taskbarBtn) rec.taskbarBtn.hidden = false;
+      fitWindow(rec.el);
       focusWindow(id);
+      saveState();
     }
 
     function focusTopmostVisible() {
@@ -848,6 +1167,49 @@ const PortalScript = () => (
       if (rec.taskbarBtn) rec.taskbarBtn.hidden = true;
       if (activeWin === id) { activeWin = null; focusTopmostVisible(); }
       updateTaskbarPressed();
+      saveState();
+    }
+
+    // Remember which windows were open and where, so a returning visitor
+    // finds the desktop the way they left it. Phones always start fresh.
+    var STATE_KEY = "webos-state-v1";
+    var restoring = false;
+    function saveState() {
+      if (restoring || isMobile()) return;
+      var state = { open: [], geom: {} };
+      Object.keys(winRegistry).forEach(function (id) {
+        var el = winRegistry[id].el;
+        if (!el.hidden) state.open.push(id);
+        state.geom[id] = {
+          left: el.style.left, top: el.style.top, right: el.style.right,
+          width: el.style.width, height: el.style.height,
+          max: el.classList.contains("is-maximized"),
+        };
+      });
+      try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+    function restoreState() {
+      if (isMobile()) return false;
+      var state = null;
+      try { state = JSON.parse(localStorage.getItem(STATE_KEY) || "null"); } catch (e) {}
+      if (!state || !Array.isArray(state.open)) return false;
+      restoring = true;
+      Object.keys(winRegistry).forEach(function (id) {
+        var el = winRegistry[id].el;
+        var g = state.geom && state.geom[id];
+        if (g) {
+          ["left", "top", "right", "width", "height"].forEach(function (k) { if (g[k]) el.style[k] = g[k]; });
+        }
+        if (state.open.indexOf(id) !== -1) {
+          el.hidden = false;
+          if (g && g.max && !el.classList.contains("is-maximized")) toggleMaximize(el);
+        } else {
+          el.hidden = true;
+        }
+        if (winRegistry[id].taskbarBtn) winRegistry[id].taskbarBtn.hidden = el.hidden;
+      });
+      restoring = false;
+      return true;
     }
 
     function makeDraggable(rec) {
@@ -857,9 +1219,9 @@ const PortalScript = () => (
       on(handle, "pointerdown", function (e) {
         if (e.target.closest && e.target.closest("button")) return;
         focusWindow(rec.id);
+        if (rec.el.classList.contains("is-maximized") || isMobile()) return;
         dragging = true;
         var r = rec.el.getBoundingClientRect();
-        var dRect = desktop.getBoundingClientRect();
         offX = e.clientX - r.left;
         offY = e.clientY - r.top;
         try { handle.setPointerCapture(e.pointerId); } catch (err) {}
@@ -868,18 +1230,21 @@ const PortalScript = () => (
       on(handle, "pointermove", function (e) {
         if (!dragging) return;
         var dRect = desktop.getBoundingClientRect();
+        var usableH = dRect.height - taskbarHeight();
         var w = rec.el.offsetWidth, h = rec.el.offsetHeight;
         var newLeft = clamp(e.clientX - dRect.left - offX, -w + 80, dRect.width - 80);
-        var newTop = clamp(e.clientY - dRect.top - offY, 0, dRect.height - 20);
+        var newTop = clamp(e.clientY - dRect.top - offY, 0, usableH - 26);
         var SNAP = 14;
         if (Math.abs(newLeft) < SNAP) newLeft = 0;
         if (Math.abs(newTop) < SNAP) newTop = 0;
         if (Math.abs(dRect.width - (newLeft + w)) < SNAP) newLeft = dRect.width - w;
-        if (Math.abs(dRect.height - (newTop + h)) < SNAP) newTop = dRect.height - h;
+        if (Math.abs(usableH - (newTop + h)) < SNAP) newTop = usableH - h;
+        rec.el.style.right = "auto";
         rec.el.style.left = newLeft + "px";
         rec.el.style.top = newTop + "px";
       });
       function stop(e) {
+        if (dragging) saveState();
         dragging = false;
         try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
       }
@@ -893,6 +1258,7 @@ const PortalScript = () => (
       var resizing = false, startW = 0, startH = 0, startX = 0, startY = 0;
       on(handle, "pointerdown", function (e) {
         focusWindow(rec.id);
+        if (rec.el.classList.contains("is-maximized")) return;
         resizing = true;
         startW = rec.el.offsetWidth; startH = rec.el.offsetHeight;
         startX = e.clientX; startY = e.clientY;
@@ -908,6 +1274,7 @@ const PortalScript = () => (
         rec.el.style.height = h + "px";
       });
       function stop(e) {
+        if (resizing) saveState();
         resizing = false;
         try { handle.releasePointerCapture(e.pointerId); } catch (err) {}
       }
@@ -924,12 +1291,23 @@ const PortalScript = () => (
       if (closeBtn) on(closeBtn, "click", function (e) { e.stopPropagation(); closeWindow(id); });
       on(el, "pointerdown", function () { if (!rec.el.hidden) focusWindow(id); });
 
+      var maxBtn = el.querySelector("[data-win-maximize]");
+      if (maxBtn) {
+        on(maxBtn, "click", function (e) { e.stopPropagation(); toggleMaximize(el); });
+        var titlebar = el.querySelector("[data-drag-handle]");
+        if (titlebar) on(titlebar, "dblclick", function (e) {
+          if (e.target.closest && e.target.closest("button")) return;
+          toggleMaximize(el);
+        });
+      }
+
       makeDraggable(rec);
       makeResizable(rec);
 
       var taskbarBtn = taskbarApps ? taskbarApps.querySelector('[data-taskbar-btn="' + id + '"]') : null;
       if (taskbarBtn) {
         rec.taskbarBtn = taskbarBtn;
+        taskbarBtn.hidden = el.hidden;
         on(taskbarBtn, "click", function () {
           if (rec.el.hidden) { openWindow(id); return; }
           if (activeWin === id) { rec.el.classList.toggle("is-collapsed"); return; }
@@ -965,13 +1343,44 @@ const PortalScript = () => (
         } else if (win.dataset.prevHeight) {
           win.style.height = win.dataset.prevHeight;
         }
+        saveState();
       });
     });
 
     var defaultOpenId = desktop.getAttribute("data-default-open");
-    if (defaultOpenId && winRegistry[defaultOpenId]) focusWindow(defaultOpenId);
+    var restored = restoreState();
+    // On a phone every window is full-screen, so opening several at once just
+    // stacks them. Start with only the default window there.
+    if (isMobile()) {
+      Object.keys(winRegistry).forEach(function (id) {
+        if (id !== defaultOpenId) closeWindow(id);
+      });
+    }
+    fitAllWindows();
+    if (restored) focusTopmostVisible();
+    else if (defaultOpenId && winRegistry[defaultOpenId]) focusWindow(defaultOpenId);
 
-    // Desktop icon select / open
+    // Small API for the desktop apps script (terminal, context menu, etc.)
+    window.__webos = {
+      open: openWindow,
+      close: closeWindow,
+      isOpen: function (id) { return !!winRegistry[id] && !winRegistry[id].el.hidden; },
+      resetLayout: function () {
+        try { localStorage.removeItem(STATE_KEY); } catch (e) {}
+        window.location.reload();
+      },
+    };
+
+    var resizeTimer = null;
+    on(window, "resize", function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(fitAllWindows, 120);
+    }, { passive: true });
+
+    // Desktop icon select / open. Mouse users double-click like the real
+    // thing; touch and keyboard (Enter/Space, which fire click with detail 0)
+    // open on a single activation since double-tap is unreliable on phones.
+    var coarse = window.matchMedia("(pointer: coarse)").matches;
     var iconSelected = null;
     Array.prototype.forEach.call(desktop.querySelectorAll("[data-icon]"), function (icon) {
       on(icon, "click", function (e) {
@@ -979,6 +1388,10 @@ const PortalScript = () => (
         if (iconSelected) iconSelected.classList.remove("is-selected");
         icon.classList.add("is-selected");
         iconSelected = icon;
+        if (coarse || e.detail === 0) {
+          var id = icon.getAttribute("data-open-window");
+          if (id) openWindow(id);
+        }
       });
       on(icon, "dblclick", function (e) {
         e.preventDefault();
@@ -1002,9 +1415,10 @@ const PortalScript = () => (
         startMenu.hidden = !willOpen;
         startBtn.classList.toggle("is-pressed", willOpen);
       });
-      Array.prototype.forEach.call(startMenu.querySelectorAll("[data-open-window]"), function (item) {
+      Array.prototype.forEach.call(startMenu.querySelectorAll(".win98-startmenu__item"), function (item) {
         on(item, "click", function () {
-          openWindow(item.getAttribute("data-open-window"));
+          var target = item.getAttribute("data-open-window");
+          if (target) openWindow(target);
           startMenu.hidden = true;
           startBtn.classList.remove("is-pressed");
         });
@@ -1013,6 +1427,13 @@ const PortalScript = () => (
         if (!startMenu.hidden && !startMenu.contains(e.target) && e.target !== startBtn) {
           startMenu.hidden = true;
           startBtn.classList.remove("is-pressed");
+        }
+      });
+      on(document, "keydown", function (e) {
+        if (e.key === "Escape" && !startMenu.hidden) {
+          startMenu.hidden = true;
+          startBtn.classList.remove("is-pressed");
+          startBtn.focus();
         }
       });
     }
@@ -1059,6 +1480,11 @@ const PortalScript = () => (
     var status = document.querySelector("[data-music-status]");
     var progress = document.querySelector("[data-music-progress]");
     var glyph = document.querySelector("[data-music-glyph]");
+    var timeEl = document.querySelector("[data-music-time]");
+    var seek = document.querySelector("[data-music-seek]");
+    var toggleBtn = document.querySelector("[data-music-toggle]");
+    var prevBtn = document.querySelector("[data-music-prev]");
+    var nextBtn = document.querySelector("[data-music-next]");
     var current = -1;
 
     function pad(n) { return n < 10 ? "0" + n : String(n); }
@@ -1074,6 +1500,10 @@ const PortalScript = () => (
         if (!playEl) return;
         playEl.textContent = i === idx && playing ? "❚❚" : "▶";
       });
+      if (toggleBtn) {
+        toggleBtn.textContent = playing ? "❚❚" : "▶";
+        toggleBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+      }
     }
     function playRow(idx) {
       var row = rows[idx];
@@ -1102,20 +1532,37 @@ const PortalScript = () => (
     }
     rows.forEach(function (row, idx) {
       on(row, "click", function () { playRow(idx); });
-      var durEl = row.querySelector("[data-music-duration]");
-      var probe = new Audio();
-      probe.preload = "metadata";
-      probe.src = row.getAttribute("data-music-src");
-      on(probe, "loadedmetadata", function () {
-        if (durEl) durEl.textContent = fmtTime(probe.duration);
-      });
-      on(probe, "error", function () {
-        if (durEl) durEl.textContent = "—";
-      });
     });
     on(audio, "timeupdate", function () {
-      if (progress && audio.duration) progress.style.width = (audio.currentTime / audio.duration) * 100 + "%";
+      var pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+      if (progress) progress.style.width = pct + "%";
+      if (seek) seek.setAttribute("aria-valuenow", String(Math.round(pct)));
+      if (timeEl) timeEl.textContent = fmtTime(audio.currentTime) + " / " + fmtTime(audio.duration);
     });
+    if (toggleBtn) on(toggleBtn, "click", function () { playRow(current < 0 ? 0 : current); });
+    if (prevBtn) on(prevBtn, "click", function () {
+      // Like most players: restart the track if we're a few seconds in, else go back one
+      if (current >= 0 && audio.currentTime > 3) { audio.currentTime = 0; return; }
+      playRow(current <= 0 ? rows.length - 1 : current - 1);
+    });
+    if (nextBtn) on(nextBtn, "click", function () {
+      playRow(current + 1 < rows.length ? current + 1 : 0);
+    });
+    if (seek) {
+      on(seek, "click", function (e) {
+        if (!audio.duration) return;
+        var r = seek.getBoundingClientRect();
+        audio.currentTime = clampPct((e.clientX - r.left) / r.width) * audio.duration;
+      });
+      on(seek, "keydown", function (e) {
+        if (!audio.duration) return;
+        if (e.key === "ArrowRight") audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+        else if (e.key === "ArrowLeft") audio.currentTime = Math.max(0, audio.currentTime - 5);
+        else return;
+        e.preventDefault();
+      });
+    }
+    function clampPct(p) { return Math.min(Math.max(p, 0), 1); }
     on(audio, "ended", function () {
       setRowPlaying(current, false);
       if (progress) progress.style.width = "0%";
@@ -1234,31 +1681,72 @@ const PortalScript = () => (
   }
 
   /* ---------- Hire Me form (mailto fallback, no backend) ---------- */
+  /* ---------- Hire Me form: sends through the Cloudflare Worker's /contact
+     route, falling back to the visitor's mail app if that isn't reachable ---------- */
   function initHireMe() {
     var form = document.querySelector("[data-hireme-form]");
     if (!form || form.dataset.bound === "true") return;
     form.dataset.bound = "true";
     var hint = document.querySelector("[data-hireme-hint]");
+    var sendBtn = form.querySelector('button[type="submit"]');
+    function setHint(text, isError) {
+      if (!hint) return;
+      hint.textContent = text;
+      hint.classList.toggle("is-error", !!isError);
+    }
     on(form, "submit", function (e) {
       e.preventDefault();
       var data = new FormData(form);
-      var name = (data.get("name") || "").toString();
-      var email = (data.get("email") || "").toString();
-      var need = (data.get("need") || "").toString();
-      var budget = (data.get("budget") || "").toString();
-      var message = (data.get("message") || "").toString();
-      var to = form.getAttribute("data-mailto") || "";
-      var subject = encodeURIComponent("Project inquiry: " + (need || "general"));
-      var body = encodeURIComponent(
-        "From: " + name + " (" + email + ")\\n" +
-        "Need: " + need + "\\n" +
-        "Budget: " + budget + "\\n\\n" +
-        message
-      );
-      if (hint) hint.textContent = "Opening your mail client…";
-      window.location.href = "mailto:" + to + "?subject=" + subject + "&body=" + body;
+      var payload = {
+        name: (data.get("name") || "").toString().trim(),
+        email: (data.get("email") || "").toString().trim(),
+        need: (data.get("need") || "").toString(),
+        budget: (data.get("budget") || "").toString(),
+        message: (data.get("message") || "").toString().trim(),
+        website: (data.get("website") || "").toString(), // honeypot
+      };
+      function mailtoFallback(reason) {
+        var to = form.getAttribute("data-mailto") || "";
+        var subject = encodeURIComponent("Project inquiry: " + (payload.need || "general"));
+        var body = encodeURIComponent(
+          "From: " + payload.name + " (" + payload.email + ")\\n" +
+          "Need: " + payload.need + "\\n" +
+          "Budget: " + payload.budget + "\\n\\n" +
+          payload.message
+        );
+        setHint(reason + " Opening your mail app instead…", true);
+        window.location.href = "mailto:" + to + "?subject=" + subject + "&body=" + body;
+      }
+      var url = form.getAttribute("data-contact-url");
+      if (!url) { mailtoFallback(""); return; }
+      if (sendBtn) sendBtn.disabled = true;
+      setHint("Sending…");
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, data: d }; });
+        })
+        .then(function (res) {
+          if (sendBtn) sendBtn.disabled = false;
+          if (res.ok) {
+            form.reset();
+            setHint("Message sent! I'll get back to you at " + payload.email + ".");
+          } else if (res.data && res.data.error && res.data.field) {
+            setHint(res.data.error, true);
+          } else {
+            mailtoFallback("Couldn't send right now.");
+          }
+        })
+        .catch(function () {
+          if (sendBtn) sendBtn.disabled = false;
+          mailtoFallback("Couldn't reach the server.");
+        });
     });
   }
+
 
   /* ---------- WHOIS Lookup (proxied through a Cloudflare Worker) ---------- */
   function initWhois() {
@@ -1403,6 +1891,7 @@ const DefaultFrame: PageFrame = {
         : new URL(`https://${cfg.baseUrl}`).pathname.replace(/\/$/, "")
     const isHome = componentData.fileData.slug === "index"
     const wordmark = SITE.alias || "dojo"
+    const posts = buildPosts(componentData.allFiles)
 
     const bootScreen = (
       <div class="boot-sequence" data-boot="true" aria-hidden="true">
@@ -1434,7 +1923,8 @@ const DefaultFrame: PageFrame = {
                     <BodyComponent {...componentData} />
                   ))}
                 </div>
-                <div class="page-content">
+                {/* "center" is the hook Quartz plugins (e.g. Mermaid) query for the article */}
+                <div class="page-content center">
                   <Content {...componentData} />
                 </div>
                 <div class="page-tail">
@@ -1475,6 +1965,7 @@ const DefaultFrame: PageFrame = {
             {UpIcon}
           </button>
 
+          <WebOSData posts={posts} basePath={basePath} />
           <PortalScript />
         </>
       )
@@ -1484,82 +1975,27 @@ const DefaultFrame: PageFrame = {
       <>
         {bootScreen}
 
+        {/* Quartz plugins (e.g. Mermaid) expect a ".center" article container on every page */}
+        <div class="center" hidden></div>
         <div class="win98-desktop" data-default-open="about">
+          {/* Flag hunt: the "source" flag, as an HTML comment for view-source hunters */}
+          <div
+            hidden
+            dangerouslySetInnerHTML={{
+              __html: `<!-- 🚩 nice, you read the source: ${flagById("source")} -->`,
+            }}
+          />
           <ul class="win98-icons" aria-label="Desktop icons">
-            <li>
-              <button type="button" class="win98-icon" data-icon="true" data-open-window="about">
-                <span class="win98-icon__glyph" aria-hidden="true">
-                  📝
-                </span>
-                <span class="win98-icon__label">About Me.txt</span>
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="win98-icon"
-                data-icon="true"
-                data-open-window="ctfwriteups"
-              >
-                <span class="win98-icon__glyph" aria-hidden="true">
-                  🗂️
-                </span>
-                <span class="win98-icon__label">CTF Writeups</span>
-              </button>
-            </li>
-            <li>
-              <button type="button" class="win98-icon" data-icon="true" data-open-window="hireme">
-                <span class="win98-icon__glyph" aria-hidden="true">
-                  📇
-                </span>
-                <span class="win98-icon__label">Hire Me</span>
-              </button>
-            </li>
-            <li>
-              <button type="button" class="win98-icon" data-icon="true" data-open-window="resume">
-                <span class="win98-icon__glyph" aria-hidden="true">
-                  📄
-                </span>
-                <span class="win98-icon__label">Resume / CV</span>
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="win98-icon"
-                data-icon="true"
-                data-open-window="wikipedia"
-              >
-                <span class="win98-icon__glyph" aria-hidden="true">
-                  📖
-                </span>
-                <span class="win98-icon__label">Wikipedia</span>
-              </button>
-            </li>
-            <li>
-              <button type="button" class="win98-icon" data-icon="true" data-open-window="whois">
-                <span class="win98-icon__glyph" aria-hidden="true">
-                  🔎
-                </span>
-                <span class="win98-icon__label">WHOIS</span>
-              </button>
-            </li>
-            <li>
-              <button type="button" class="win98-icon" data-icon="true" data-open-window="paint">
-                <span class="win98-icon__glyph" aria-hidden="true">
-                  🎨
-                </span>
-                <span class="win98-icon__label">Paint</span>
-              </button>
-            </li>
-            <li>
-              <button type="button" class="win98-icon" data-icon="true" data-open-window="music">
-                <span class="win98-icon__glyph" aria-hidden="true">
-                  🎵
-                </span>
-                <span class="win98-icon__label">Music Player</span>
-              </button>
-            </li>
+            {APPS.map((app) => (
+              <li>
+                <button type="button" class="win98-icon" data-icon="true" data-open-window={app.id}>
+                  <span class="win98-icon__glyph" aria-hidden="true">
+                    {app.icon}
+                  </span>
+                  <span class="win98-icon__label">{app.label}</span>
+                </button>
+              </li>
+            ))}
           </ul>
 
           {/* About Me.txt — Notepad */}
@@ -1586,7 +2022,7 @@ const DefaultFrame: PageFrame = {
             class="win98-window"
             data-window="ctfwriteups"
             hidden
-            style="left:170px;top:70px;width:660px;height:480px;"
+            style="left:170px;top:50px;width:820px;height:560px;"
           >
             <WinTitlebar icon="🗂️" title="CTF Writeups" />
             <div class="win98-body win98-folder-body">
@@ -1604,7 +2040,12 @@ const DefaultFrame: PageFrame = {
           >
             <WinTitlebar icon="📇" title="Hire Me" />
             <div class="win98-body win98-hireme-body">
-              <form class="hireme-form" data-hireme-form="true" data-mailto={SITE.email}>
+              <form
+                class="hireme-form"
+                data-hireme-form="true"
+                data-mailto={SITE.email}
+                data-contact-url={WHOIS_PROXY_URL ? `${WHOIS_PROXY_URL}/contact` : ""}
+              >
                 <div class="hireme-form__row hireme-form__row--send">
                   <div>
                     <span class="hireme-form__label">Email to</span>
@@ -1652,6 +2093,11 @@ const DefaultFrame: PageFrame = {
                     ))}
                   </select>
                 </label>
+                {/* Honeypot: hidden from people, irresistible to bots */}
+                <label class="hireme-honeypot" aria-hidden="true">
+                  Website
+                  <input type="text" name="website" tabindex={-1} autocomplete="off" />
+                </label>
                 <label class="hireme-field hireme-field--message">
                   <span>Message</span>
                   <textarea name="message" placeholder="Tell me about your project"></textarea>
@@ -1673,14 +2119,15 @@ const DefaultFrame: PageFrame = {
           <div
             class="win98-window win98-window--sticky"
             data-window="todo"
-            style="right:600px;top:70px;width:230px;height:230px;"
+            style="right:600px;top:70px;width:250px;height:280px;"
           >
-            <WinTitlebar title="Things to do today" />
+            <WinTitlebar title="Things to do today" maximizable={false} />
             <div class="win98-sticky-body">
               <ul>
                 {SITE.todoItems.map((item) => (
                   <li class={item.done ? "is-done" : ""}>- {item.text}</li>
                 ))}
+                <li class="is-invisible-ink">- {flagById("sticky")}</li>
               </ul>
             </div>
           </div>
@@ -1838,7 +2285,7 @@ const DefaultFrame: PageFrame = {
           <div
             class="win98-window win98-window--music"
             data-window="music"
-            style="right:80px;top:480px;width:520px;height:280px;"
+            style="right:80px;top:470px;width:540px;height:320px;"
           >
             <WinTitlebar icon="🎵" title="Music Player" />
             <div class="win98-music-body">
@@ -1852,9 +2299,7 @@ const DefaultFrame: PageFrame = {
                     <span class="win98-music-row__play" data-music-play="true" aria-hidden="true">
                       ▶
                     </span>
-                    <span class="win98-music-row__duration" data-music-duration="true">
-                      --:--
-                    </span>
+                    <span class="win98-music-row__duration">{t.duration}</span>
                     <span class="win98-music-row__title">{t.title}</span>
                     <span class="win98-music-row__artist">{t.artist}</span>
                   </li>
@@ -1867,10 +2312,265 @@ const DefaultFrame: PageFrame = {
                 <p class="win98-music-now__track" data-music-now-track="true">
                   Select a track
                 </p>
-                <div class="win98-music-progress">
+                <div
+                  class="win98-music-progress"
+                  data-music-seek="true"
+                  role="slider"
+                  aria-label="Seek"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={0}
+                  tabindex={0}
+                >
                   <div class="win98-music-progress__bar" data-music-progress="true"></div>
                 </div>
+                <p class="win98-music-now__time" data-music-time="true">
+                  0:00 / --:--
+                </p>
+                <div class="win98-music-controls">
+                  <button
+                    type="button"
+                    class="win98-music-ctrl"
+                    data-music-prev="true"
+                    aria-label="Previous track"
+                  >
+                    ⏮
+                  </button>
+                  <button
+                    type="button"
+                    class="win98-music-ctrl win98-music-ctrl--main"
+                    data-music-toggle="true"
+                    aria-label="Play"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    class="win98-music-ctrl"
+                    data-music-next="true"
+                    aria-label="Next track"
+                  >
+                    ⏭
+                  </button>
+                </div>
                 <p class="win98-music-now__status" data-music-status="true"></p>
+              </div>
+            </div>
+          </div>
+
+          {/* Terminal */}
+          <div
+            class="win98-window win98-window--terminal"
+            data-window="terminal"
+            hidden
+            style="left:250px;top:80px;width:620px;height:420px;"
+          >
+            <WinTitlebar icon="💻" title="Terminal - bash" />
+            <div class="win98-term" data-term-screen="true">
+              <div data-term-out="true"></div>
+              <label class="win98-term__input-line">
+                <span class="win98-term__prompt" data-term-prompt="true"></span>
+                <input
+                  type="text"
+                  class="win98-term__input"
+                  data-term-input="true"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck={false}
+                  aria-label="Terminal command"
+                />
+              </label>
+            </div>
+            <div class="win98-resize-handle" data-resize-handle="true"></div>
+          </div>
+
+          {/* Flags.exe: the hidden-flag hunt scoreboard */}
+          <div
+            class="win98-window"
+            data-window="flags"
+            hidden
+            style="left:380px;top:60px;width:460px;height:540px;"
+          >
+            <WinTitlebar icon="🚩" title="Flags.exe - Scoreboard" />
+            <div class="win98-body win98-flags-body">
+              <p class="win98-flags-intro">
+                {FLAGS.length} flags are hidden around this site, in the format{" "}
+                <code>ecst4sy{"{...}"}</code>. Find them and submit them here (or with{" "}
+                <code>submit</code> in the Terminal).
+              </p>
+              <div class="win98-flags-progress" aria-hidden="true">
+                <div class="win98-flags-progress__bar" data-flags-bar="true"></div>
+              </div>
+              <p class="win98-flags-count" data-flags-count="true">
+                0 / {FLAGS.length}
+              </p>
+              <div class="win98-flags-submit">
+                <input
+                  type="text"
+                  data-flags-input="true"
+                  placeholder="ecst4sy{...}"
+                  autocomplete="off"
+                  spellcheck={false}
+                  aria-label="Flag"
+                />
+                <button type="button" class="win98-button" data-flags-submit="true">
+                  Submit
+                </button>
+              </div>
+              <p class="win98-flags-status" data-flags-status="true" role="status"></p>
+              <ol class="win98-flags-list" data-flags-list="true"></ol>
+              <p class="win98-flags-done" data-flags-done="true" hidden>
+                🏆 All flags captured! Screenshot this and tag me, I'd love to know.
+              </p>
+              <button type="button" class="win98-button win98-flags-reset" data-flags-reset="true">
+                Reset progress
+              </button>
+            </div>
+            <div class="win98-resize-handle" data-resize-handle="true"></div>
+          </div>
+
+          {/* Minesweeper */}
+          <div
+            class="win98-window win98-window--mines"
+            data-window="minesweeper"
+            hidden
+            style="left:460px;top:100px;width:262px;height:400px;"
+          >
+            <WinTitlebar icon="💣" title="Minesweeper" maximizable={false} />
+            <div class="win98-ms">
+              <div class="win98-ms__head">
+                <span class="win98-ms__lcd" data-ms-count="true" aria-label="Mines left">
+                  010
+                </span>
+                <button
+                  type="button"
+                  class="win98-ms__face"
+                  data-ms-face="true"
+                  aria-label="New game"
+                >
+                  🙂
+                </button>
+                <span class="win98-ms__lcd" data-ms-time="true" aria-label="Seconds">
+                  000
+                </span>
+              </div>
+              <div class="win98-ms__board" data-ms-board="true" aria-label="Minefield"></div>
+              <div class="win98-ms__foot">
+                <button
+                  type="button"
+                  class="win98-button win98-ms__flagmode"
+                  data-ms-flagmode="true"
+                  aria-pressed="false"
+                >
+                  🚩 Flag mode
+                </button>
+                <span>or right-click</span>
+              </div>
+              <p class="win98-ms__msg" data-ms-msg="true" role="status" hidden></p>
+            </div>
+          </div>
+
+          {/* Recycle Bin */}
+          <div
+            class="win98-window"
+            data-window="recycle"
+            hidden
+            style="left:300px;top:130px;width:470px;height:320px;"
+          >
+            <WinTitlebar icon="🗑️" title="Recycle Bin" />
+            <div class="win98-toolbar">
+              <button type="button" class="win98-toolbar__go" data-recycle-empty="true">
+                🗑️ Empty Recycle Bin
+              </button>
+            </div>
+            <div class="win98-body win98-recycle-body">
+              <ul class="win98-files">
+                {RECYCLE_FILES.map((file, i) => (
+                  <li>
+                    <button type="button" class="win98-file" data-recycle-file={i}>
+                      <span class="win98-file__icon" aria-hidden="true">
+                        {file.icon}
+                      </span>
+                      <span class="win98-file__name">{file.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <p class="win98-statusbar" data-recycle-status="true" role="status">
+              {RECYCLE_FILES.length} object(s). Double-click to open.
+            </p>
+            <div class="win98-resize-handle" data-resize-handle="true"></div>
+          </div>
+
+          {/* Notepad viewer for Recycle Bin files */}
+          <div
+            class="win98-window"
+            data-window="viewer"
+            hidden
+            style="left:360px;top:160px;width:480px;height:330px;"
+          >
+            <WinTitlebar icon="📝" title="Notepad" />
+            <div class="win98-menuline" aria-hidden="true">
+              <span>File</span>
+              <span>Edit</span>
+              <span>Search</span>
+              <span>Help</span>
+            </div>
+            <div class="win98-body">
+              <pre data-viewer-body="true"></pre>
+            </div>
+            <div class="win98-resize-handle" data-resize-handle="true"></div>
+          </div>
+
+          {/* Display Properties: wallpaper + screensaver */}
+          <div
+            class="win98-window"
+            data-window="display"
+            hidden
+            style="left:400px;top:60px;width:400px;height:560px;"
+          >
+            <WinTitlebar icon="🖥️" title="Display Properties" maximizable={false} />
+            <div class="win98-dialog-body">
+              <div class="win98-display-monitor" aria-hidden="true">
+                <div class="win98-display-screen" data-display-preview="true"></div>
+              </div>
+              <fieldset class="win98-fieldset">
+                <legend>Wallpaper</legend>
+                <div class="win98-display-list" data-display-wallpapers="true"></div>
+              </fieldset>
+              <fieldset class="win98-fieldset">
+                <legend>Screen Saver</legend>
+                <div class="win98-display-row">
+                  <select data-display-saver="true" aria-label="Screen saver">
+                    <option value="starfield">Starfield</option>
+                    <option value="none">(None)</option>
+                  </select>
+                  <button type="button" class="win98-button" data-display-saver-preview="true">
+                    Preview
+                  </button>
+                </div>
+                <label class="win98-display-row">
+                  Wait:
+                  <select data-display-wait="true">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                  </select>
+                  minutes
+                </label>
+              </fieldset>
+              <div class="win98-dialog-actions">
+                <button type="button" class="win98-button" data-display-ok="true">
+                  OK
+                </button>
+                <button type="button" class="win98-button" data-display-cancel="true">
+                  Cancel
+                </button>
+                <button type="button" class="win98-button" data-display-apply="true">
+                  Apply
+                </button>
               </div>
             </div>
           </div>
@@ -1884,36 +2584,35 @@ const DefaultFrame: PageFrame = {
           </button>
           <div class="win98-taskbar__divider" aria-hidden="true"></div>
           <div class="win98-taskbar__apps" data-taskbar-apps="true">
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="about">
-              📝 About Me.txt
-            </button>
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="todo">
-              🗒️ Things to do today
-            </button>
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="music">
-              🎵 Music Player
-            </button>
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="ctfwriteups" hidden>
-              🗂️ CTF Writeups
-            </button>
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="hireme" hidden>
-              📇 Hire Me
-            </button>
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="resume" hidden>
-              📄 Resume / CV
-            </button>
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="wikipedia" hidden>
-              📖 Wikipedia
-            </button>
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="whois" hidden>
-              🔎 WHOIS Lookup
-            </button>
-            <button type="button" class="win98-taskbar__app" data-taskbar-btn="paint" hidden>
-              🎨 Paint
-            </button>
+            {[...APPS, ...OTHER_WINDOWS].map((app) => (
+              <button type="button" class="win98-taskbar__app" data-taskbar-btn={app.id} hidden>
+                {app.icon} {app.label}
+              </button>
+            ))}
           </div>
           <div class="win98-tray">
+            <button
+              type="button"
+              class="win98-tray__icon"
+              data-quick-open="flags"
+              aria-label="Open Flags.exe"
+              title="Flag hunt"
+            >
+              🚩
+            </button>
             <span data-hud-clock="ampm">--:-- --</span>
+            <div class="win98-balloon" data-balloon="true" role="status" hidden>
+              <button
+                type="button"
+                class="win98-balloon__close"
+                data-balloon-close="true"
+                aria-label="Dismiss"
+              >
+                ×
+              </button>
+              <p class="win98-balloon__title" data-balloon-title="true"></p>
+              <p class="win98-balloon__text" data-balloon-text="true"></p>
+            </div>
           </div>
         </div>
 
@@ -1922,40 +2621,52 @@ const DefaultFrame: PageFrame = {
             {wordmark.toUpperCase()} 98
           </div>
           <div class="win98-startmenu__items">
-            <button type="button" class="win98-startmenu__item" data-open-window="about">
-              <span aria-hidden="true">📝</span> About Me.txt
-            </button>
-            <button type="button" class="win98-startmenu__item" data-open-window="ctfwriteups">
-              <span aria-hidden="true">🗂️</span> CTF Writeups
-            </button>
-            <button type="button" class="win98-startmenu__item" data-open-window="hireme">
-              <span aria-hidden="true">📇</span> Hire Me
-            </button>
-            <button type="button" class="win98-startmenu__item" data-open-window="resume">
-              <span aria-hidden="true">📄</span> Resume / CV
-            </button>
-            <button type="button" class="win98-startmenu__item" data-open-window="wikipedia">
-              <span aria-hidden="true">📖</span> Wikipedia
-            </button>
-            <button type="button" class="win98-startmenu__item" data-open-window="whois">
-              <span aria-hidden="true">🔎</span> WHOIS Lookup
-            </button>
-            <button type="button" class="win98-startmenu__item" data-open-window="paint">
-              <span aria-hidden="true">🎨</span> Paint
-            </button>
-            <button type="button" class="win98-startmenu__item" data-open-window="music">
-              <span aria-hidden="true">🎵</span> Music Player
-            </button>
-            <button type="button" class="win98-startmenu__item" data-open-window="todo">
-              <span aria-hidden="true">🗒️</span> Things to do today
-            </button>
+            {[...APPS.filter((app) => app.id !== "recycle"), OTHER_WINDOWS[0]].map((app) => (
+              <button type="button" class="win98-startmenu__item" data-open-window={app.id}>
+                <span aria-hidden="true">{app.icon}</span> {app.label}
+              </button>
+            ))}
             <div class="win98-startmenu__sep" aria-hidden="true"></div>
+            <p class="win98-startmenu__heading">Recent writeups</p>
+            {posts.slice(0, 4).map((post) => (
+              <a class="win98-startmenu__item" href={`${basePath}/${post.slug}`}>
+                <span aria-hidden="true">📄</span> {post.title}
+              </a>
+            ))}
+            <div class="win98-startmenu__sep" aria-hidden="true"></div>
+            <button type="button" class="win98-startmenu__item" data-open-window="display">
+              <span aria-hidden="true">🖥️</span> Display Properties
+            </button>
             <a class="win98-startmenu__item" href={SITE.github} target="_blank" rel="noreferrer">
               <span aria-hidden="true">🔧</span> View source on GitHub
             </a>
+            <div class="win98-startmenu__sep" aria-hidden="true"></div>
+            <button type="button" class="win98-startmenu__item" data-shutdown="true">
+              <span aria-hidden="true">⏻</span> Shut Down…
+            </button>
           </div>
         </div>
 
+        <div class="win98-ctxmenu" data-ctx-menu="true" role="menu" hidden>
+          <button type="button" role="menuitem" data-ctx-action="terminal">
+            💻 Open Terminal
+          </button>
+          <button type="button" role="menuitem" data-ctx-action="display">
+            🖼️ Change Wallpaper…
+          </button>
+          <button type="button" role="menuitem" data-ctx-action="reset">
+            🗔 Reset Window Layout
+          </button>
+          <button type="button" role="menuitem" data-ctx-action="refresh">
+            🔄 Refresh
+          </button>
+          <div class="win98-startmenu__sep" aria-hidden="true"></div>
+          <button type="button" role="menuitem" data-ctx-action="display">
+            Properties
+          </button>
+        </div>
+
+        <WebOSData posts={posts} basePath={basePath} />
         <PortalScript />
       </>
     )

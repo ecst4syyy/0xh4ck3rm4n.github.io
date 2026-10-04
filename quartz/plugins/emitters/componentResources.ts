@@ -6,6 +6,8 @@ import { QuartzEmitterPlugin } from "../types"
 import spaRouterScript from "../../components/scripts/spa.inline"
 // @ts-ignore
 import popoverScript from "../../components/scripts/popover.inline"
+// @ts-ignore
+import webosAppsScript from "../../components/scripts/webos-apps.inline"
 import baseStyles from "../../styles/base.scss"
 import customStyles from "../../styles/custom.scss"
 import popoverStyle from "../../components/styles/popover.scss"
@@ -83,6 +85,10 @@ async function joinScripts(scripts: string[]): Promise<string> {
 
 function addGlobalPageResources(ctx: BuildCtx, componentResources: ComponentResources) {
   const cfg = ctx.cfg.configuration
+
+  // WebOS desktop apps (terminal, flag hunt, minesweeper…); no-ops on pages
+  // without the desktop. Runs after DefaultFrame's inline window manager.
+  componentResources.afterDOMLoaded.push(webosAppsScript)
 
   // popovers
   if (cfg.enablePopovers) {
